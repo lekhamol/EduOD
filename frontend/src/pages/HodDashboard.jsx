@@ -282,6 +282,29 @@ export default function HodDashboard() {
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', fontStyle: 'italic' }}>"{selectedReq.reason}"</p>
                 </div>
 
+                {selectedReq.student && typeof selectedReq.student.attendance === 'number' && (
+                  <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--card-border)', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Attendance Registry</span>
+                      <span style={{ fontWeight: 'bold', color: selectedReq.student.attendance >= 75 ? 'var(--success)' : selectedReq.student.attendance >= 65 ? 'var(--warning)' : 'var(--danger)' }}>
+                        {selectedReq.student.attendance}%
+                      </span>
+                    </div>
+                    <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.5rem' }}>
+                      <div style={{ 
+                        width: `${selectedReq.student.attendance}%`, 
+                        height: '100%', 
+                        background: selectedReq.student.attendance >= 75 ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)' : selectedReq.student.attendance >= 65 ? 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)' : 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)',
+                        borderRadius: '4px'
+                      }}></div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      <span>Min Required: 75%</span>
+                      <span>{selectedReq.student.attendance >= 75 ? 'Meets Requirements' : 'Attendance Shortage'}</span>
+                    </div>
+                  </div>
+                )}
+
                 {selectedReq.ai_analysis && (
                   <div className="ai-recommendation-box" style={{ marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--primary)', fontWeight: 'bold', fontSize: '0.85rem', marginBottom: '0.5rem', textTransform: 'uppercase' }}>

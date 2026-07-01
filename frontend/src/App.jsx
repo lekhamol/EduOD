@@ -51,7 +51,7 @@ function App() {
           element={
             <FacultyRoute>
               <FacultyDashboard />
-            </StudentRoute>
+            </FacultyRoute>
           } 
         />
         <Route 

@@ -8,7 +8,13 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     role: { type: String, required: true, enum: ['student', 'faculty', 'hod'] },
     department: { type: String, required: true },
-    reg_no: { type: String, required: function() { return this.role === 'student'; } }
+    reg_no: { type: String, required: function() { return this.role === 'student'; } },
+    attendance: { 
+      type: Number, 
+      default: function() { 
+        return this.role === 'student' ? Math.floor(Math.random() * (95 - 65 + 1)) + 65 : undefined; 
+      } 
+    }
   },
   { timestamps: true }
 );

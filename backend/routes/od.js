@@ -79,7 +79,7 @@ router.get('/all', protect, authorize('faculty', 'hod'), async (req, res) => {
     }
 
     const requests = await ODRequest.find(query)
-      .populate('student', 'name email department')
+      .populate('student', 'name email department attendance')
       .sort({ createdAt: -1 });
 
     res.json({ success: true, requests });
@@ -91,7 +91,7 @@ router.get('/all', protect, authorize('faculty', 'hod'), async (req, res) => {
 // Get OD details
 router.get('/:id', async (req, res) => {
   try {
-    const request = await ODRequest.findById(req.params.id).populate('student', 'name email department reg_no');
+    const request = await ODRequest.findById(req.params.id).populate('student', 'name email department reg_no attendance');
     if (!request) {
       return res.status(404).json({ success: false, error: 'Request not found' });
     }
