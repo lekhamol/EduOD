@@ -1,6 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import bcrypt from 'bcryptjs';
+import { query } from '../config/db.js';
 import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -15,30 +16,34 @@ router.post('/register', async (req, res) => {
   const { name, email, password, role, department, reg_no } = req.body;
 
   try {
-    const userExists = await User.findOne({ email });
-    if (userExists) {
+    const userExists = await query('SELECT id FROM users WHERE email = ?', [email]);
+    if (userExists && userExists.length > 0) {
       return res.status(400).json({ success: false, error: 'User already exists' });
     }
 
-    const user = await User.create({
-      name,
-      email,
-      password,
-      role,
-      department,
-      reg_no: role === 'student' ? reg_no : undefined
-    });
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const attendance = role === 'student' ? Math.floor(Math.random() * (95 - 65 + 1)) + 65 : null;
+
+    const result = await query(
+      'INSERT INTO users (name, email, password, role, department, reg_no, attendance) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, email, hashedPassword, role, department, role === 'student' ? reg_no : null, attendance]
+    );
+
+    const userId = result.insertId;
 
     res.status(201).json({
       success: true,
-      token: generateToken(user._id),
+      token: generateToken(userId),
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        reg_no: user.reg_no
+        id: userId,
+        name,
+        email,
+        role,
+        department,
+        reg_no: role === 'student' ? reg_no : undefined,
+        attendance
       }
     });
   } catch (error) {
@@ -50,20 +55,27 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ email });
-    if (user && (await user.comparePassword(password))) {
-      res.json({
-        success: true,
-        token: generateToken(user._id),
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          department: user.department,
-          reg_no: user.reg_no
-        }
-      });
+    const users = await query('SELECT * FROM users WHERE email = ?', [email]);
+    if (users && users.length > 0) {
+      const user = users[0];
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (isMatch) {
+        res.json({
+          success: true,
+          token: generateToken(user.id),
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            department: user.department,
+            reg_no: user.reg_no,
+            attendance: user.attendance
+          }
+        });
+      } else {
+        res.status(401).json({ success: false, error: 'Invalid email or password' });
+      }
     } else {
       res.status(401).json({ success: false, error: 'Invalid email or password' });
     }

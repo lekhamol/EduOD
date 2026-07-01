@@ -1,4 +1,4 @@
-import ODRequest from '../models/ODRequest.js';
+import { query } from '../config/db.js';
 
 export const analyzeODRequest = async (studentId, startDate, reason, file) => {
   let riskScore = 10;
@@ -15,10 +15,13 @@ export const analyzeODRequest = async (studentId, startDate, reason, file) => {
 
   // 2. Count existing OD requests for this student in the current month
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-  const count = await ODRequest.countDocuments({
-    student: studentId,
-    createdAt: { $gte: firstDayOfMonth }
-  });
+  const mysqlDate = firstDayOfMonth.toISOString().slice(0, 10);
+  
+  const results = await query(
+    'SELECT COUNT(*) as count FROM od_requests WHERE student_id = ? AND created_at >= ?',
+    [studentId, mysqlDate]
+  );
+  const count = results[0]?.count || 0;
 
   if (count >= 3) {
     riskScore += 40;

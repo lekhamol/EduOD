@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import { query } from '../config/db.js';
 
 export const protect = async (req, res, next) => {
   let token;
@@ -8,12 +8,16 @@ export const protect = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'edu_od_secret_key_jwt_2026_xyz');
       
-      const user = await User.findById(decoded.id).select('-password');
-      if (!user) {
+      const users = await query(
+        'SELECT id, name, email, role, department, reg_no, attendance FROM users WHERE id = ?',
+        [decoded.id]
+      );
+      
+      if (!users || users.length === 0) {
         return res.status(401).json({ success: false, error: 'Not authorized, user not found' });
       }
       
-      req.user = user;
+      req.user = users[0];
       next();
     } catch (error) {
       console.error(error);
