@@ -1,13 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle, ShieldAlert, Calendar, MessageCircle } from 'lucide-react';
+import ThemeSelector from '../components/ThemeSelector';
 
 export default function Landing() {
   return (
     <div className="animate-slide-up">
       <nav className="landing-navbar">
         <div className="logo-text">Edu OD</div>
-        <div className="nav-links">
+        <div className="nav-links" style={{ alignItems: 'center' }}>
+          <ThemeSelector />
           <Link to="/login" className="btn btn-secondary" style={{ padding: '0.6rem 1.2rem' }}>Login</Link>
           <Link to="/register" className="btn btn-primary" style={{ padding: '0.6rem 1.2rem' }}>Get Started</Link>
         </div>

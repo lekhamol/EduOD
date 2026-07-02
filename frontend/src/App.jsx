@@ -30,6 +30,18 @@ const HodRoute = ({ children }) => {
 function App() {
   const role = localStorage.getItem('role');
 
+  React.useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'default';
+    document.body.classList.forEach((className) => {
+      if (className.startsWith('theme-')) {
+        document.body.classList.remove(className);
+      }
+    });
+    if (savedTheme !== 'default') {
+      document.body.classList.add(`theme-${savedTheme}`);
+    }
+  }, []);
+
   return (
     <Router>
       <Routes>

@@ -10,6 +10,16 @@ export default function VerifyOD() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') || 'default';
+    document.body.classList.forEach((className) => {
+      if (className.startsWith('theme-')) {
+        document.body.classList.remove(className);
+      }
+    });
+    if (savedTheme !== 'default') {
+      document.body.classList.add(`theme-${savedTheme}`);
+    }
+
     const fetchODDetails = async () => {
       try {
         const response = await axios.get(`http://localhost:5000/api/od/${id}`);
@@ -30,7 +40,7 @@ export default function VerifyOD() {
   }, [id]);
 
   return (
-    <div className="auth-wrapper" style={{ background: '#090d16' }}>
+    <div className="auth-wrapper" style={{ background: 'var(--bg-color)' }}>
       <div className="auth-card glass-card animate-slide-up" style={{ maxWidth: '600px', padding: '3rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <div className="logo-text" style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>Edu OD</div>

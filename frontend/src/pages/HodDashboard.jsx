@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { LogOut, Calendar as CalendarIcon, FileText, AlertCircle, Check, X, ShieldAlert, Sparkles, MessageCircle, Search, Filter } from 'lucide-react';
 import QRCard from '../components/QRCard';
+import ThemeSelector from '../components/ThemeSelector';
 
 export default function HodDashboard() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
@@ -86,7 +87,8 @@ export default function HodDashboard() {
     <div className="dashboard-wrapper animate-slide-up">
       <nav className="dashboard-nav">
         <div className="logo-text">Edu OD</div>
-        <div className="nav-user-info">
+        <div className="nav-user-info" style={{ alignItems: 'center' }}>
+          <ThemeSelector />
           <span className="user-badge">{user.role}</span>
           <span style={{ fontWeight: 600 }}>{user.name} (HOD / Admin)</span>
           <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }} onClick={handleLogout}>

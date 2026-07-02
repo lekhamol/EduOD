@@ -3,6 +3,7 @@ import axios from 'axios';
 import { LogOut, Calendar as CalendarIcon, FileText, Send, AlertCircle, Sparkles, Check, X, ShieldAlert } from 'lucide-react';
 import Calendar from '../components/Calendar';
 import QRCard from '../components/QRCard';
+import ThemeSelector from '../components/ThemeSelector';
 
 export default function StudentDashboard() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
@@ -103,7 +104,8 @@ export default function StudentDashboard() {
     <div className="dashboard-wrapper animate-slide-up">
       <nav className="dashboard-nav">
         <div className="logo-text">Edu OD</div>
-        <div className="nav-user-info">
+        <div className="nav-user-info" style={{ alignItems: 'center' }}>
+          <ThemeSelector />
           <span className="user-badge">{user.role}</span>
           <span style={{ fontWeight: 600 }}>{user.name} ({user.reg_no})</span>
           <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem' }} onClick={handleLogout}>
