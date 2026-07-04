@@ -1,13 +1,12 @@
 import express from 'express';
-import ODRequest from '../models/ODRequest.js';
-import User from '../models/User.js';
-import { protect, authorize } from '../middleware/auth.js';
+import { query } from '../config/db.js';
+import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
 router.get('/', protect, async (req, res) => {
   try {
-    const { role, _id, department } = req.user;
+    const { role, id, department } = req.user;
     let stats = {
       total: 0,
       pending: 0,
@@ -16,22 +15,54 @@ router.get('/', protect, async (req, res) => {
     };
 
     if (role === 'student') {
-      stats.total = await ODRequest.countDocuments({ student: _id });
-      stats.pending = await ODRequest.countDocuments({ student: _id, status: { $in: ['Pending', 'Faculty_Approved'] } });
-      stats.approved = await ODRequest.countDocuments({ student: _id, status: 'Approved' });
-      stats.rejected = await ODRequest.countDocuments({ student: _id, status: 'Rejected' });
+      const rows = await query(
+        `SELECT
+          COUNT(*) AS total,
+          SUM(status IN ('Pending','Faculty_Approved')) AS pending,
+          SUM(status = 'Approved') AS approved,
+          SUM(status = 'Rejected') AS rejected
+         FROM od_requests WHERE student_id = ?`,
+        [id]
+      );
+      stats = {
+        total: rows[0].total || 0,
+        pending: rows[0].pending || 0,
+        approved: rows[0].approved || 0,
+        rejected: rows[0].rejected || 0
+      };
     } else {
-      const deptQuery = role === 'hod' ? {} : { department };
-      
-      stats.total = await ODRequest.countDocuments(deptQuery);
-      stats.pending = await ODRequest.countDocuments({ ...deptQuery, status: 'Pending' });
-      stats.approved = await ODRequest.countDocuments({ ...deptQuery, status: 'Approved' });
-      stats.rejected = await ODRequest.countDocuments({ ...deptQuery, status: 'Rejected' });
+      let sql, params;
 
       if (role === 'hod') {
-        const breakdown = await ODRequest.aggregate([
-          { $group: { _id: '$department', count: { $sum: 1 } } }
-        ]);
+        sql = `SELECT
+          COUNT(*) AS total,
+          SUM(status = 'Pending') AS pending,
+          SUM(status = 'Approved') AS approved,
+          SUM(status = 'Rejected') AS rejected
+         FROM od_requests`;
+        params = [];
+      } else {
+        sql = `SELECT
+          COUNT(*) AS total,
+          SUM(status = 'Pending') AS pending,
+          SUM(status = 'Approved') AS approved,
+          SUM(status = 'Rejected') AS rejected
+         FROM od_requests WHERE department = ?`;
+        params = [department];
+      }
+
+      const rows = await query(sql, params);
+      stats = {
+        total: rows[0].total || 0,
+        pending: rows[0].pending || 0,
+        approved: rows[0].approved || 0,
+        rejected: rows[0].rejected || 0
+      };
+
+      if (role === 'hod') {
+        const breakdown = await query(
+          `SELECT department AS _id, COUNT(*) AS count FROM od_requests GROUP BY department`
+        );
         stats.departmentBreakdown = breakdown;
       }
     }

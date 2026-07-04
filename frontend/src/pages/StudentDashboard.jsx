@@ -30,7 +30,11 @@ export default function StudentDashboard() {
       const headers = { Authorization: `Bearer ${token}` };
 
       const resReq = await axios.get('http://localhost:5000/api/od/my', { headers });
-      setRequests(resReq.data.requests);
+      setRequests((resReq.data.requests || []).map(r => ({
+        ...r,
+        comments: typeof r.comments === 'string' ? JSON.parse(r.comments || '[]') : (r.comments || []),
+        ai_analysis: typeof r.ai_analysis === 'string' ? JSON.parse(r.ai_analysis || 'null') : r.ai_analysis
+      })));
 
       const resStats = await axios.get('http://localhost:5000/api/stats', { headers });
       setStats(resStats.data.stats);
@@ -247,7 +251,7 @@ export default function StudentDashboard() {
               <h3 className="section-card-title">My Applications History</h3>
               <div className="od-list">
                 {requests.map((req) => (
-                  <div key={req._id} className="od-item glass-card" style={{ background: 'rgba(255,255,255,0.01)' }}>
+                  <div key={req.id} className="od-item glass-card" style={{ background: 'rgba(255,255,255,0.01)' }}>
                     <div className="od-info">
                       <div className="od-title" style={{fontWeight: 700}}>{req.event_name}</div>
                       <div className="od-meta" style={{marginTop: '0.25rem'}}>

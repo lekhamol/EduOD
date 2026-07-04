@@ -1,7 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import ODRequest from '../models/ODRequest.js';
-import User from '../models/User.js';
+import { query } from '../config/db.js';
 import { protect, authorize } from '../middleware/auth.js';
 import { analyzeODRequest } from '../utils/aiHelper.js';
 import { generateQRCode } from '../utils/qrHelper.js';
@@ -19,7 +18,7 @@ const upload = multer({ storage });
 router.post('/apply', protect, authorize('student'), upload.single('attachment'), async (req, res) => {
   try {
     const { event_name, start_date, end_date, reason } = req.body;
-    
+
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Document attachment is mandatory.' });
     }
@@ -27,20 +26,26 @@ router.post('/apply', protect, authorize('student'), upload.single('attachment')
     const attachmentPath = req.file.path.replace(/\\/g, '/');
 
     // Run AI analysis helper
-    const aiAnalysis = await analyzeODRequest(req.user._id, start_date, reason, req.file.filename);
+    const aiAnalysis = await analyzeODRequest(req.user.id, start_date, reason, req.file.filename);
 
-    const odRequest = await ODRequest.create({
-      student: req.user._id,
-      student_name: req.user.name,
-      reg_no: req.user.reg_no,
-      department: req.user.department,
-      event_name,
-      start_date,
-      end_date,
-      reason,
-      attachment: attachmentPath,
-      ai_analysis: aiAnalysis
-    });
+    const result = await query(
+      `INSERT INTO od_requests (student_id, student_name, reg_no, department, event_name, start_date, end_date, reason, attachment, ai_analysis)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        req.user.id,
+        req.user.name,
+        req.user.reg_no,
+        req.user.department,
+        event_name,
+        start_date,
+        end_date,
+        reason,
+        attachmentPath,
+        JSON.stringify(aiAnalysis)
+      ]
+    );
+
+    const [odRequest] = await query('SELECT * FROM od_requests WHERE id = ?', [result.insertId]);
 
     res.status(201).json({ success: true, odRequest });
   } catch (error) {
@@ -51,7 +56,10 @@ router.post('/apply', protect, authorize('student'), upload.single('attachment')
 // View student's own ODs
 router.get('/my', protect, authorize('student'), async (req, res) => {
   try {
-    const requests = await ODRequest.find({ student: req.user._id }).sort({ createdAt: -1 });
+    const requests = await query(
+      'SELECT * FROM od_requests WHERE student_id = ? ORDER BY created_at DESC',
+      [req.user.id]
+    );
     res.json({ success: true, requests });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -62,26 +70,31 @@ router.get('/my', protect, authorize('student'), async (req, res) => {
 router.get('/all', protect, authorize('faculty', 'hod'), async (req, res) => {
   try {
     const { status, department, search } = req.query;
-    let query = {};
+
+    let sql = `
+      SELECT o.*, u.email, u.attendance
+      FROM od_requests o
+      LEFT JOIN users u ON o.student_id = u.id
+      WHERE 1=1
+    `;
+    const params = [];
 
     if (department) {
-      query.department = department;
+      sql += ' AND o.department = ?';
+      params.push(department);
     }
     if (status) {
-      query.status = status;
+      sql += ' AND o.status = ?';
+      params.push(status);
     }
     if (search) {
-      query.$or = [
-        { student_name: { $regex: search, $options: 'i' } },
-        { reg_no: { $regex: search, $options: 'i' } },
-        { event_name: { $regex: search, $options: 'i' } }
-      ];
+      sql += ' AND (o.student_name LIKE ? OR o.reg_no LIKE ? OR o.event_name LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
 
-    const requests = await ODRequest.find(query)
-      .populate('student', 'name email department attendance')
-      .sort({ createdAt: -1 });
+    sql += ' ORDER BY o.created_at DESC';
 
+    const requests = await query(sql, params);
     res.json({ success: true, requests });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -91,11 +104,17 @@ router.get('/all', protect, authorize('faculty', 'hod'), async (req, res) => {
 // Get OD details
 router.get('/:id', async (req, res) => {
   try {
-    const request = await ODRequest.findById(req.params.id).populate('student', 'name email department reg_no attendance');
-    if (!request) {
+    const rows = await query(
+      `SELECT o.*, u.email, u.attendance
+       FROM od_requests o
+       LEFT JOIN users u ON o.student_id = u.id
+       WHERE o.id = ?`,
+      [req.params.id]
+    );
+    if (!rows || rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Request not found' });
     }
-    res.json({ success: true, request });
+    res.json({ success: true, request: rows[0] });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -109,29 +128,32 @@ router.put('/:id/review', protect, authorize('faculty'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid status for Faculty review' });
     }
 
-    const request = await ODRequest.findById(req.params.id);
-    if (!request) {
+    const rows = await query('SELECT * FROM od_requests WHERE id = ?', [req.params.id]);
+    if (!rows || rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Request not found' });
     }
+    const request = rows[0];
 
-    request.status = status;
+    let comments = [];
+    try { comments = JSON.parse(request.comments || '[]'); } catch { comments = []; }
+
     if (comment) {
-      request.comments.push({
-        author: req.user.name,
-        role: 'faculty',
-        text: comment
-      });
+      comments.push({ author: req.user.name, role: 'faculty', text: comment });
     }
 
-    await request.save();
+    await query(
+      'UPDATE od_requests SET status = ?, comments = ? WHERE id = ?',
+      [status, JSON.stringify(comments), req.params.id]
+    );
 
     // Notify student via email
-    const student = await User.findById(request.student);
-    if (student) {
-      await sendStatusEmail(student.email, student.name, request);
+    const students = await query('SELECT * FROM users WHERE id = ?', [request.student_id]);
+    if (students && students.length > 0) {
+      await sendStatusEmail(students[0].email, students[0].name, { ...request, status, comments });
     }
 
-    res.json({ success: true, request });
+    const [updated] = await query('SELECT * FROM od_requests WHERE id = ?', [req.params.id]);
+    res.json({ success: true, request: updated });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -145,36 +167,40 @@ router.put('/:id/approve', protect, authorize('hod'), async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid status for HOD approval' });
     }
 
-    const request = await ODRequest.findById(req.params.id);
-    if (!request) {
+    const rows = await query('SELECT * FROM od_requests WHERE id = ?', [req.params.id]);
+    if (!rows || rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Request not found' });
     }
+    const request = rows[0];
 
-    request.status = status;
+    let comments = [];
+    try { comments = JSON.parse(request.comments || '[]'); } catch { comments = []; }
+
     if (comment) {
-      request.comments.push({
-        author: req.user.name,
-        role: 'hod',
-        text: comment
-      });
+      comments.push({ author: req.user.name, role: 'hod', text: comment });
     }
 
+    let qrCodeData = request.qr_code_data || null;
     if (status === 'Approved') {
-      const verificationLink = `http://localhost:5173/verify-od/${request._id}`;
-      request.qr_code_data = await generateQRCode(
+      const verificationLink = `http://localhost:5173/verify-od/${request.id}`;
+      qrCodeData = await generateQRCode(
         `Verified OD: ${request.student_name} (${request.reg_no}) - Event: ${request.event_name} - Date: ${new Date(request.start_date).toLocaleDateString()} - Verification: ${verificationLink}`
       );
     }
 
-    await request.save();
+    await query(
+      'UPDATE od_requests SET status = ?, comments = ?, qr_code_data = ? WHERE id = ?',
+      [status, JSON.stringify(comments), qrCodeData, req.params.id]
+    );
 
     // Notify student via email
-    const student = await User.findById(request.student);
-    if (student) {
-      await sendStatusEmail(student.email, student.name, request);
+    const students = await query('SELECT * FROM users WHERE id = ?', [request.student_id]);
+    if (students && students.length > 0) {
+      await sendStatusEmail(students[0].email, students[0].name, { ...request, status, comments });
     }
 
-    res.json({ success: true, request });
+    const [updated] = await query('SELECT * FROM od_requests WHERE id = ?', [req.params.id]);
+    res.json({ success: true, request: updated });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

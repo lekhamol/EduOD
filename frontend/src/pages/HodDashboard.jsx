@@ -33,7 +33,11 @@ export default function HodDashboard() {
       if (searchTerm) url += `search=${searchTerm}&`;
 
       const resReq = await axios.get(url, { headers });
-      setRequests(resReq.data.requests);
+      setRequests((resReq.data.requests || []).map(r => ({
+        ...r,
+        comments: typeof r.comments === 'string' ? JSON.parse(r.comments || '[]') : (r.comments || []),
+        ai_analysis: typeof r.ai_analysis === 'string' ? JSON.parse(r.ai_analysis || 'null') : r.ai_analysis
+      })));
 
       const resStats = await axios.get('http://localhost:5000/api/stats', { headers });
       setStats(resStats.data.stats);
@@ -188,11 +192,11 @@ export default function HodDashboard() {
               <div className="od-list">
                 {requests.map((req) => (
                   <div 
-                    key={req._id} 
+                    key={req.id} 
                     className="od-item glass-card" 
                     style={{ 
                       background: 'rgba(255,255,255,0.01)',
-                      borderLeft: selectedReq?._id === req._id ? '4px solid var(--primary)' : '1px solid var(--card-border)',
+                      borderLeft: selectedReq?.id === req.id ? '4px solid var(--primary)' : '1px solid var(--card-border)',
                       cursor: 'pointer' 
                     }}
                     onClick={() => setSelectedReq(req)}
@@ -284,25 +288,25 @@ export default function HodDashboard() {
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', fontStyle: 'italic' }}>"{selectedReq.reason}"</p>
                 </div>
 
-                {selectedReq.student && typeof selectedReq.student.attendance === 'number' && (
+                {typeof selectedReq.attendance === 'number' && (
                   <div style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--card-border)', marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'bold', textTransform: 'uppercase' }}>Attendance Registry</span>
-                      <span style={{ fontWeight: 'bold', color: selectedReq.student.attendance >= 75 ? 'var(--success)' : selectedReq.student.attendance >= 65 ? 'var(--warning)' : 'var(--danger)' }}>
-                        {selectedReq.student.attendance}%
+                      <span style={{ fontWeight: 'bold', color: selectedReq.attendance >= 75 ? 'var(--success)' : selectedReq.attendance >= 65 ? 'var(--warning)' : 'var(--danger)' }}>
+                        {selectedReq.attendance}%
                       </span>
                     </div>
                     <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.5rem' }}>
                       <div style={{ 
-                        width: `${selectedReq.student.attendance}%`, 
+                        width: `${selectedReq.attendance}%`, 
                         height: '100%', 
-                        background: selectedReq.student.attendance >= 75 ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)' : selectedReq.student.attendance >= 65 ? 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)' : 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)',
+                        background: selectedReq.attendance >= 75 ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)' : selectedReq.attendance >= 65 ? 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)' : 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)',
                         borderRadius: '4px'
                       }}></div>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       <span>Min Required: 75%</span>
-                      <span>{selectedReq.student.attendance >= 75 ? 'Meets Requirements' : 'Attendance Shortage'}</span>
+                      <span>{selectedReq.attendance >= 75 ? 'Meets Requirements' : 'Attendance Shortage'}</span>
                     </div>
                   </div>
                 )}
@@ -339,14 +343,14 @@ export default function HodDashboard() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
                     <button 
                       className="btn btn-danger" 
-                      onClick={() => handleAction(selectedReq._id, 'Rejected')}
+                      onClick={() => handleAction(selectedReq.id, 'Rejected')}
                       disabled={actionLoading}
                     >
                       <X size={16} /> Reject OD
                     </button>
                     <button 
                       className="btn btn-primary" 
-                      onClick={() => handleAction(selectedReq._id, 'Approved')}
+                      onClick={() => handleAction(selectedReq.id, 'Approved')}
                       disabled={actionLoading}
                     >
                       <Check size={16} /> Final Approve
