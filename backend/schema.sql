@@ -31,3 +31,14 @@ CREATE TABLE IF NOT EXISTS od_requests (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS attendance_records (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  student_id INT NOT NULL,
+  date DATE NOT NULL,
+  status ENUM('present', 'absent', 'od', 'holiday') DEFAULT 'present',
+  marked_by INT NOT NULL,
+  UNIQUE KEY unique_student_date (student_id, date),
+  FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (marked_by) REFERENCES users(id) ON DELETE CASCADE
+);
