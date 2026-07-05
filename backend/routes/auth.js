@@ -33,6 +33,36 @@ router.post('/register', async (req, res) => {
 
     const userId = result.insertId;
 
+    if (role === 'student') {
+      try {
+        const faculty = await query('SELECT id FROM users WHERE role = "faculty" AND department = ? LIMIT 1', [department]);
+        const markerId = (faculty && faculty.length > 0) ? faculty[0].id : userId;
+
+        const today = new Date();
+        const records = [];
+        for (let i = 120; i >= 0; i--) {
+          const date = new Date(today);
+          date.setDate(today.getDate() - i);
+          
+          // Skip Sundays and Saturdays for weekends
+          if (date.getDay() === 0 || date.getDay() === 6) continue;
+          
+          const status = Math.random() * 100 < attendance ? 'present' : 'absent';
+          const formattedDate = date.toISOString().split('T')[0];
+          records.push([userId, formattedDate, status, markerId]);
+        }
+
+        for (const rec of records) {
+          await query(
+            'INSERT INTO attendance_records (student_id, date, status, marked_by) VALUES (?, ?, ?, ?)',
+            rec
+          );
+        }
+      } catch (err) {
+        console.error('Failed to seed attendance records:', err);
+      }
+    }
+
     res.status(201).json({
       success: true,
       token: generateToken(userId),

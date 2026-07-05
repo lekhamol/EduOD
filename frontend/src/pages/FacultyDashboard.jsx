@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { LogOut, Calendar as CalendarIcon, FileText, AlertCircle, Check, X, ShieldAlert, Sparkles, MessageCircle } from 'lucide-react';
+import { LogOut, Calendar as CalendarIcon, FileText, AlertCircle, Check, X, ShieldAlert, Sparkles, MessageCircle, Users, CheckSquare } from 'lucide-react';
 import ThemeSelector from '../components/ThemeSelector';
+import AttendanceHeatmap from '../components/AttendanceHeatmap';
 
 export default function FacultyDashboard() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
@@ -11,9 +12,24 @@ export default function FacultyDashboard() {
   const [comment, setComment] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Heatmap & Mark Attendance States
+  const [activeTab, setActiveTab] = useState('requests'); // 'requests' or 'attendance'
+  const [students, setStudents] = useState([]);
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [attendanceStatuses, setAttendanceStatuses] = useState({}); // { studentId: 'present' / 'absent' }
+  const [markSuccess, setMarkSuccess] = useState('');
+  const [markError, setMarkError] = useState('');
+  const [markLoading, setMarkLoading] = useState(false);
+
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'attendance') {
+      fetchStudents();
+    }
+  }, [activeTab]);
 
   const fetchDashboardData = async () => {
     try {
@@ -31,6 +47,23 @@ export default function FacultyDashboard() {
       setStats(resStats.data.stats);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+    }
+  };
+
+  const fetchStudents = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const headers = { Authorization: `Bearer ${token}` };
+      const res = await axios.get('http://localhost:5000/api/attendance/students', { headers });
+      setStudents(res.data.students || []);
+      
+      const initial = {};
+      (res.data.students || []).forEach(s => {
+        initial[s.id] = 'present';
+      });
+      setAttendanceStatuses(initial);
+    } catch (error) {
+      console.error('Error fetching students:', error);
     }
   };
 
@@ -57,6 +90,39 @@ export default function FacultyDashboard() {
       console.error('Error handling faculty action:', error);
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleMarkAttendance = async (e) => {
+    e.preventDefault();
+    setMarkSuccess('');
+    setMarkError('');
+    setMarkLoading(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const headers = { Authorization: `Bearer ${token}` };
+      
+      const records = Object.keys(attendanceStatuses).map(studentId => ({
+        student_id: parseInt(studentId),
+        status: attendanceStatuses[studentId]
+      }));
+
+      const res = await axios.post('http://localhost:5000/api/attendance/mark', {
+        date: attendanceDate,
+        records
+      }, { headers });
+
+      if (res.data.success) {
+        setMarkSuccess('Attendance marked successfully!');
+        // Refresh department stats
+        fetchDashboardData();
+      }
+    } catch (err) {
+      console.error(err);
+      setMarkError(err.response?.data?.error || 'Failed to mark attendance.');
+    } finally {
+      setMarkLoading(false);
     }
   };
 

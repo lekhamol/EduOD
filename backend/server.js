@@ -11,6 +11,7 @@ import authRoutes from './routes/auth.js';
 import odRoutes from './routes/od.js';
 import statsRoutes from './routes/stats.js';
 import chatbotRoutes from './routes/chatbot.js';
+import attendanceRoutes from './routes/attendance.js';
 
 dotenv.config();
 
@@ -40,6 +41,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/od', odRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 app.get('/verify-od/:id', (req, res) => {
   res.redirect(`http://localhost:5173/verify-od/${req.params.id}`);
