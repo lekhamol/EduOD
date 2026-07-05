@@ -3,6 +3,7 @@ import axios from 'axios';
 import { LogOut, Calendar as CalendarIcon, FileText, AlertCircle, Check, X, ShieldAlert, Sparkles, MessageCircle, Search, Filter } from 'lucide-react';
 import QRCard from '../components/QRCard';
 import ThemeSelector from '../components/ThemeSelector';
+import AttendanceHeatmap from '../components/AttendanceHeatmap';
 
 export default function HodDashboard() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
@@ -310,6 +311,9 @@ export default function HodDashboard() {
                     </div>
                   </div>
                 )}
+
+                {/* Integrated Attendance Heatmap */}
+                <AttendanceHeatmap studentId={selectedReq.student_id} />
 
                 {selectedReq.ai_analysis && (
                   <div className="ai-recommendation-box" style={{ marginBottom: '1.5rem' }}>
