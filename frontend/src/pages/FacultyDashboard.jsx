@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { LogOut, Calendar as CalendarIcon, FileText, AlertCircle, Check, X, ShieldAlert, Sparkles, MessageCircle, Users, CheckSquare } from 'lucide-react';
+import { LogOut, Calendar as CalendarIcon, FileText, AlertCircle, Check, X, ShieldAlert, Sparkles, MessageCircle, Users, CheckSquare, Upload, Brain, TriangleAlert, CircleCheck } from 'lucide-react';
 import ThemeSelector from '../components/ThemeSelector';
 import AttendanceHeatmap from '../components/AttendanceHeatmap';
 
@@ -29,6 +29,14 @@ export default function FacultyDashboard() {
   const [addSuccess, setAddSuccess] = useState('');
   const [addError, setAddError] = useState('');
   const [addLoading, setAddLoading] = useState(false);
+
+  // AI Absentee Upload States
+  const [aiFile, setAiFile] = useState(null);
+  const [aiDragging, setAiDragging] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState(null); // { matched, unmatched, message }
+  const [aiError, setAiError] = useState('');
+  const aiFileInputRef = useRef(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -167,6 +175,71 @@ export default function FacultyDashboard() {
     } finally {
       setAddLoading(false);
     }
+  };
+
+  // AI Absentee Upload Handlers
+  const handleAiFileDrop = (e) => {
+    e.preventDefault();
+    setAiDragging(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (file) validateAndSetAiFile(file);
+  };
+
+  const handleAiFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) validateAndSetAiFile(file);
+  };
+
+  const validateAndSetAiFile = (file) => {
+    const name = file.name.toLowerCase();
+    if (!name.endsWith('.csv') && !name.endsWith('.txt')) {
+      setAiError('Please select a .csv or .txt file.');
+      return;
+    }
+    setAiError('');
+    setAiResult(null);
+    setAiFile(file);
+  };
+
+  const handleAiAnalyze = async () => {
+    if (!aiFile) { setAiError('Please select a file first.'); return; }
+    setAiLoading(true);
+    setAiError('');
+    setAiResult(null);
+
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('absentee_file', aiFile);
+
+      const res = await axios.post('http://localhost:5000/api/attendance/parse-absentees', formData, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.data.success) {
+        setAiResult(res.data);
+        // Auto-fill attendance table: mark matched students as absent, rest as present
+        const newStatuses = {};
+        students.forEach(s => { newStatuses[s.id] = 'present'; });
+        res.data.matched.forEach(m => { newStatuses[m.student_id] = 'absent'; });
+        setAttendanceStatuses(newStatuses);
+      }
+    } catch (err) {
+      setAiError(err.response?.data?.error || 'AI analysis failed. Please try again.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleClearAi = () => {
+    setAiFile(null);
+    setAiResult(null);
+    setAiError('');
+    if (aiFileInputRef.current) aiFileInputRef.current.value = '';
+    // Reset all to present
+    const reset = {};
+    students.forEach(s => { reset[s.id] = 'present'; });
+    setAttendanceStatuses(reset);
   };
 
   return (
@@ -449,6 +522,148 @@ export default function FacultyDashboard() {
                   required
                 />
               </div>
+
+              {/* ───────── AI Absentee Upload Section ───────── */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.08) 100%)',
+                border: '1px solid rgba(99,102,241,0.25)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '1.5rem',
+                marginBottom: '2rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <Brain size={20} color="var(--primary)" />
+                  <span style={{ fontWeight: 700, color: 'white', fontSize: '1rem' }}>AI-Assisted Absentee Upload</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>Upload .txt or .csv with absentee names/reg numbers</span>
+                </div>
+
+                {/* Drag & Drop Zone */}
+                {!aiResult && (
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setAiDragging(true); }}
+                    onDragLeave={() => setAiDragging(false)}
+                    onDrop={handleAiFileDrop}
+                    onClick={() => aiFileInputRef.current?.click()}
+                    style={{
+                      border: `2px dashed ${aiDragging ? 'var(--primary)' : 'rgba(99,102,241,0.35)'}`,
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '2rem',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      background: aiDragging ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.01)',
+                      transition: 'all 0.2s ease',
+                      marginBottom: '1rem'
+                    }}
+                  >
+                    <Upload size={28} color="var(--primary)" style={{ marginBottom: '0.5rem', opacity: 0.8 }} />
+                    <div style={{ color: 'white', fontWeight: 600, marginBottom: '0.25rem' }}>
+                      {aiFile ? aiFile.name : 'Drag & drop your file here'}
+                    </div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                      {aiFile ? `${(aiFile.size / 1024).toFixed(1)} KB — click to change` : 'or click to browse — .txt and .csv supported'}
+                    </div>
+                    <input
+                      ref={aiFileInputRef}
+                      type="file"
+                      accept=".txt,.csv"
+                      style={{ display: 'none' }}
+                      onChange={handleAiFileSelect}
+                    />
+                  </div>
+                )}
+
+                {aiError && (
+                  <div style={{ padding: '0.6rem 1rem', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: 'var(--danger)', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                    {aiError}
+                  </div>
+                )}
+
+                {!aiResult && (
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleAiAnalyze}
+                      disabled={!aiFile || aiLoading}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, justifyContent: 'center' }}
+                    >
+                      {aiLoading ? (
+                        <><span style={{ display: 'inline-block', width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} /> Analyzing...</>
+                      ) : (
+                        <><Sparkles size={16} /> Analyze with AI</>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {/* AI Result Panel */}
+                {aiResult && (
+                  <div style={{ animation: 'fadeIn 0.3s ease' }}>
+                    {/* Summary Banner */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', padding: '0.75rem 1rem', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <CircleCheck size={18} color="var(--success)" />
+                        <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: '0.9rem' }}>{aiResult.message}</span>
+                      </div>
+                      <button type="button" onClick={handleClearAi} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}>Reset</button>
+                    </div>
+
+                    {/* Matched Students */}
+                    {aiResult.matched.length > 0 && (
+                      <div style={{ marginBottom: '1rem' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <CircleCheck size={13} /> Matched Absentees ({aiResult.matched.length}) — marked Absent ↓
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          {aiResult.matched.map((m, i) => (
+                            <div key={i} style={{
+                              display: 'flex', alignItems: 'center', gap: '0.4rem',
+                              padding: '0.3rem 0.75rem',
+                              background: 'rgba(239,68,68,0.1)',
+                              border: '1px solid rgba(239,68,68,0.25)',
+                              borderRadius: '20px',
+                              fontSize: '0.8rem'
+                            }}>
+                              <span style={{ color: 'white', fontWeight: 600 }}>{m.name}</span>
+                              <span style={{ color: 'var(--text-muted)' }}>({m.reg_no})</span>
+                              <span style={{
+                                fontSize: '0.7rem', fontWeight: 700,
+                                color: m.confidence >= 90 ? 'var(--success)' : m.confidence >= 70 ? 'var(--warning)' : '#f97316',
+                                background: 'rgba(0,0,0,0.2)', padding: '0 0.3rem', borderRadius: '4px'
+                              }}>{m.confidence}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Unmatched Names */}
+                    {aiResult.unmatched.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--warning)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <TriangleAlert size={13} /> Unmatched ({aiResult.unmatched.length}) — needs manual review
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          {aiResult.unmatched.map((u, i) => (
+                            <div key={i} style={{
+                              padding: '0.3rem 0.75rem',
+                              background: 'rgba(245,158,11,0.08)',
+                              border: '1px solid rgba(245,158,11,0.25)',
+                              borderRadius: '20px',
+                              fontSize: '0.8rem',
+                              color: 'var(--warning)'
+                            }}>
+                              {u.raw_input}
+                              {u.best_guess && <span style={{ color: 'var(--text-muted)', marginLeft: '0.4rem' }}>≈ {u.best_guess.name} ({u.best_guess.confidence}%)</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {/* ───────── End AI Section ───────── */}
 
               <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', marginBottom: '2rem' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.9rem' }}>

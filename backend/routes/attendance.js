@@ -1,9 +1,187 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
+import multer from 'multer';
 import { query } from '../config/db.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Multer: store file in memory for parsing
+const uploadMemory = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB max
+  fileFilter: (req, file, cb) => {
+    const ext = file.originalname.toLowerCase();
+    if (ext.endsWith('.csv') || ext.endsWith('.txt')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only .csv and .txt files are allowed'));
+    }
+  }
+});
+
+// ── Fuzzy matching helpers ──────────────────────────────────────────────────
+
+/** Normalize a string: lowercase, remove punctuation, collapse whitespace */
+function normalize(str) {
+  return (str || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+/** Levenshtein distance between two strings */
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1];
+      else dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+/**
+ * Similarity score 0–100 between two normalized strings.
+ * Combines exact-contains bonus + Levenshtein ratio.
+ */
+function similarity(a, b) {
+  if (!a || !b) return 0;
+  const na = normalize(a), nb = normalize(b);
+  if (na === nb) return 100;
+  // Token overlap bonus
+  const tokA = new Set(na.split(' '));
+  const tokB = nb.split(' ');
+  const overlap = tokB.filter(t => tokA.has(t)).length;
+  const tokenScore = tokB.length > 0 ? (overlap / tokB.length) * 60 : 0;
+  // Levenshtein ratio component
+  const maxLen = Math.max(na.length, nb.length);
+  const levScore = maxLen > 0 ? ((maxLen - levenshtein(na, nb)) / maxLen) * 40 : 0;
+  return Math.round(tokenScore + levScore);
+}
+
+/**
+ * Parse a raw file buffer (.txt or .csv) into a list of { name?, reg_no? } entries.
+ * Supports:
+ *   - Plain text: one name or reg_no per line
+ *   - CSV with optional headers: name, reg_no
+ */
+function parseAbsenteeFile(buffer, filename) {
+  const text = buffer.toString('utf-8');
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const entries = [];
+
+  const isCsv = filename.toLowerCase().endsWith('.csv');
+  if (isCsv) {
+    const firstLine = lines[0].toLowerCase();
+    const hasHeader = firstLine.includes('name') || firstLine.includes('reg');
+    const dataLines = hasHeader ? lines.slice(1) : lines;
+    for (const line of dataLines) {
+      const parts = line.split(',').map(p => p.trim());
+      entries.push({ name: parts[0] || '', reg_no: parts[1] || '' });
+    }
+  } else {
+    // Plain text: each line is either a name or reg_no (detect by pattern)
+    for (const line of lines) {
+      // Reg no pattern: contains digits (e.g. 2026CS1045)
+      if (/\d/.test(line) && line.length <= 20) {
+        entries.push({ name: '', reg_no: line });
+      } else {
+        entries.push({ name: line, reg_no: '' });
+      }
+    }
+  }
+  return entries;
+}
+
+// ── AI Match Endpoint ───────────────────────────────────────────────────────
+
+// POST parse absentee file and fuzzy-match to department students (Faculty only)
+router.post('/parse-absentees', protect, authorize('faculty'), (req, res) => {
+  // Run multer manually so we can catch its errors and return proper JSON
+  uploadMemory.single('absentee_file')(req, res, async (multerErr) => {
+    if (multerErr) {
+      return res.status(400).json({ success: false, error: multerErr.message || 'File upload error.' });
+    }
+
+    try {
+      if (!req.file) {
+        return res.status(400).json({ success: false, error: 'No file received. Please select a .csv or .txt file and try again.' });
+      }
+
+      // 1. Fetch all students in this faculty's department
+      const students = await query(
+        'SELECT id, name, reg_no, attendance FROM users WHERE role = ? AND department = ? ORDER BY name ASC',
+        ['student', req.user.department]
+      );
+
+      // 2. Parse the uploaded file into raw entries
+      const rawEntries = parseAbsenteeFile(req.file.buffer, req.file.originalname);
+
+      const matched = [];
+      const unmatched = [];
+      const CONFIDENCE_THRESHOLD = 50;
+
+      for (const entry of rawEntries) {
+        const { name: rawName, reg_no: rawRegNo } = entry;
+        if (!rawName && !rawRegNo) continue;
+
+        let bestMatch = null;
+        let bestScore = 0;
+        let matchedBy = 'name';
+
+        for (const student of students) {
+          let score = 0;
+
+          // Exact reg_no match → 100
+          if (rawRegNo && normalize(rawRegNo) === normalize(student.reg_no)) {
+            score = 100;
+            matchedBy = 'reg_no';
+          } else if (rawName) {
+            score = similarity(rawName, student.name);
+            matchedBy = 'name';
+          }
+
+          if (score > bestScore) {
+            bestScore = score;
+            bestMatch = student;
+          }
+        }
+
+        if (bestMatch && bestScore >= CONFIDENCE_THRESHOLD) {
+          // Avoid duplicates
+          if (!matched.find(m => m.student_id === bestMatch.id)) {
+            matched.push({
+              student_id: bestMatch.id,
+              name: bestMatch.name,
+              reg_no: bestMatch.reg_no,
+              attendance: bestMatch.attendance,
+              confidence: bestScore,
+              matched_by: matchedBy,
+              raw_input: rawName || rawRegNo
+            });
+          }
+        } else {
+          unmatched.push({
+            raw_input: rawName || rawRegNo,
+            best_guess: bestMatch ? { name: bestMatch.name, reg_no: bestMatch.reg_no, confidence: bestScore } : null
+          });
+        }
+      }
+
+      res.json({
+        success: true,
+        total_uploaded: rawEntries.length,
+        matched,
+        unmatched,
+        message: `Matched ${matched.length} of ${rawEntries.length} entries. ${unmatched.length} could not be identified.`
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+});
 
 // GET students in faculty's department (for marking attendance)
 router.get('/students', protect, authorize('faculty'), async (req, res) => {
