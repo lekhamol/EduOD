@@ -121,7 +121,29 @@ export default function StudentDashboard() {
       </nav>
 
       <div className="dashboard-content">
-        <div className="stats-grid">
+        {/* Navigation Tabs */}
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.75rem' }}>
+          <button
+            className={`btn ${activeTab === 'requests' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem' }}
+            onClick={() => setActiveTab('requests')}
+          >
+            <FileText size={16} /> OD Applications & History
+          </button>
+          <button
+            className={`btn ${activeTab === 'analytics' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem' }}
+            onClick={() => setActiveTab('analytics')}
+          >
+            <BarChart2 size={16} /> My Performance Analytics
+          </button>
+        </div>
+
+        {activeTab === 'analytics' ? (
+          <AnalyticsDashboard />
+        ) : (
+          <>
+            <div className="stats-grid">
           <div className="stat-card glass-card">
             <div className="stat-icon" style={{ background: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary)' }}>
               <FileText size={22} />
@@ -327,6 +349,8 @@ export default function StudentDashboard() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
 
       <QRCard request={activeLetter} onClose={() => setActiveLetter(null)} />

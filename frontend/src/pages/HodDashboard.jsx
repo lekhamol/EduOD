@@ -128,6 +128,7 @@ export default function HodDashboard() {
           <AnalyticsDashboard />
         ) : (
           <>
+          <div className="stats-grid">
 
           <div className="stat-card glass-card">
             <div className="stat-icon" style={{ background: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary)' }}>
@@ -414,8 +415,8 @@ export default function HodDashboard() {
             )}
           </div>
         </div>
-        </> {/* end requests tab fragment */}
-        )} {/* end activeTab ternary */}
+        </>
+        )}
       </div>
 
       <QRCard request={activeLetter} onClose={() => setActiveLetter(null)} />

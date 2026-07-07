@@ -287,8 +287,6 @@ router.get('/', protect, async (req, res) => {
     }
 
     res.json({ success: true, stats });
-
-    res.json({ success: true, stats });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
