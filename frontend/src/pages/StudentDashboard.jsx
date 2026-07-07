@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { LogOut, Calendar as CalendarIcon, FileText, Send, AlertCircle, Sparkles, Check, X, ShieldAlert } from 'lucide-react';
+import { LogOut, Calendar as CalendarIcon, FileText, Send, AlertCircle, Sparkles, Check, X, ShieldAlert, BarChart2 } from 'lucide-react';
 import Calendar from '../components/Calendar';
 import QRCard from '../components/QRCard';
 import ThemeSelector from '../components/ThemeSelector';
+import AnalyticsDashboard from '../components/AnalyticsDashboard';
 
 export default function StudentDashboard() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
@@ -19,6 +20,7 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
+  const [activeTab, setActiveTab] = useState('requests'); // 'requests' | 'analytics'
 
   useEffect(() => {
     fetchDashboardData();

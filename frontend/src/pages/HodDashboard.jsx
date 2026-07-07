@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { LogOut, Calendar as CalendarIcon, FileText, AlertCircle, Check, X, ShieldAlert, Sparkles, MessageCircle, Search, Filter } from 'lucide-react';
+import { LogOut, Calendar as CalendarIcon, FileText, AlertCircle, Check, X, ShieldAlert, Sparkles, MessageCircle, Search, Filter, BarChart2 } from 'lucide-react';
 import QRCard from '../components/QRCard';
 import ThemeSelector from '../components/ThemeSelector';
 import AttendanceHeatmap from '../components/AttendanceHeatmap';
+import AnalyticsDashboard from '../components/AnalyticsDashboard';
 
 export default function HodDashboard() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
@@ -11,6 +12,7 @@ export default function HodDashboard() {
   const [stats, setStats] = useState({ total: 0, pending: 0, approved: 0, rejected: 0, departmentBreakdown: [] });
   const [selectedReq, setSelectedReq] = useState(null);
   const [comment, setComment] = useState('');
+  const [activeTab, setActiveTab] = useState('requests'); // 'requests' | 'analytics'
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Faculty_Approved');
@@ -103,7 +105,30 @@ export default function HodDashboard() {
       </nav>
 
       <div className="dashboard-content">
-        <div className="stats-grid">
+
+        {/* Tab switcher */}
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '0.75rem' }}>
+          <button
+            className={`btn ${activeTab === 'requests' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem' }}
+            onClick={() => setActiveTab('requests')}
+          >
+            <FileText size={16} /> OD Requests ({requests.length})
+          </button>
+          <button
+            className={`btn ${activeTab === 'analytics' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem' }}
+            onClick={() => setActiveTab('analytics')}
+          >
+            <BarChart2 size={16} /> Analytics Dashboard
+          </button>
+        </div>
+
+        {activeTab === 'analytics' ? (
+          <AnalyticsDashboard />
+        ) : (
+          <>
+
           <div className="stat-card glass-card">
             <div className="stat-icon" style={{ background: 'rgba(99, 102, 241, 0.15)', color: 'var(--primary)' }}>
               <FileText size={22} />
@@ -389,6 +414,8 @@ export default function HodDashboard() {
             )}
           </div>
         </div>
+        </> {/* end requests tab fragment */}
+        )} {/* end activeTab ternary */}
       </div>
 
       <QRCard request={activeLetter} onClose={() => setActiveLetter(null)} />

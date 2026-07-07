@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { LogOut, Calendar as CalendarIcon, FileText, AlertCircle, Check, X, ShieldAlert, Sparkles, MessageCircle, Users, CheckSquare, Upload, Brain, TriangleAlert, CircleCheck } from 'lucide-react';
+import { LogOut, Calendar as CalendarIcon, FileText, AlertCircle, Check, X, ShieldAlert, Sparkles, MessageCircle, Users, CheckSquare, Upload, Brain, TriangleAlert, CircleCheck, BarChart2 } from 'lucide-react';
 import ThemeSelector from '../components/ThemeSelector';
 import AttendanceHeatmap from '../components/AttendanceHeatmap';
+import AnalyticsDashboard from '../components/AnalyticsDashboard';
 
 export default function FacultyDashboard() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
@@ -13,7 +14,7 @@ export default function FacultyDashboard() {
   const [actionLoading, setActionLoading] = useState(false);
 
   // Heatmap & Mark Attendance States
-  const [activeTab, setActiveTab] = useState('requests'); // 'requests' or 'attendance'
+  const [activeTab, setActiveTab] = useState('requests'); // 'requests' | 'attendance' | 'manage_students' | 'analytics'
   const [students, setStudents] = useState([]);
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendanceStatuses, setAttendanceStatuses] = useState({}); // { studentId: 'present' / 'absent' }
@@ -258,7 +259,7 @@ export default function FacultyDashboard() {
 
       <div className="dashboard-content">
         {/* Navigation Tabs */}
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.75rem', overflowX: 'auto' }}>
           <button 
             className={`btn ${activeTab === 'requests' ? 'btn-primary' : 'btn-secondary'}`}
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem' }}
@@ -279,6 +280,13 @@ export default function FacultyDashboard() {
             onClick={() => setActiveTab('manage_students')}
           >
             <Users size={16} /> Add New Student
+          </button>
+          <button 
+            className={`btn ${activeTab === 'analytics' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem' }}
+            onClick={() => setActiveTab('analytics')}
+          >
+            <BarChart2 size={16} /> Department Analytics
           </button>
         </div>
 
@@ -733,7 +741,7 @@ export default function FacultyDashboard() {
               )}
             </form>
           </div>
-        ) : (
+        ) : activeTab === 'manage_students' ? (
           /* Manage/Add Students Tab Panel */
           <div className="section-card glass-card animate-slide-up" style={{ maxWidth: '600px', margin: '0 auto', padding: '2rem' }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'white' }}>
@@ -809,6 +817,8 @@ export default function FacultyDashboard() {
               </button>
             </form>
           </div>
+        ) : (
+          <AnalyticsDashboard />
         )}
       </div>
     </div>
