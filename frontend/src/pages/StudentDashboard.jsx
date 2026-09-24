@@ -15,6 +15,8 @@ export default function StudentDashboard() {
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
   const [file, setFile] = useState(null);
+  const [facultyList, setFacultyList] = useState([]);
+  const [selectedFacultyId, setSelectedFacultyId] = useState('');
   
   const [activeLetter, setActiveLetter] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -40,6 +42,12 @@ export default function StudentDashboard() {
 
       const resStats = await axios.get('http://localhost:5000/api/stats', { headers });
       setStats(resStats.data.stats);
+
+      const resFac = await axios.get('http://localhost:5000/api/od/faculty-list', { headers });
+      setFacultyList(resFac.data.faculty || []);
+      if (resFac.data.faculty && resFac.data.faculty.length > 0) {
+        setSelectedFacultyId(resFac.data.faculty[0].id);
+      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     }
@@ -69,6 +77,7 @@ export default function StudentDashboard() {
       formData.append('start_date', startDate);
       formData.append('end_date', endDate);
       formData.append('reason', reason);
+      formData.append('faculty_id', selectedFacultyId);
       formData.append('attachment', file);
 
       const res = await axios.post('http://localhost:5000/api/od/apply', formData, {
@@ -207,6 +216,23 @@ export default function StudentDashboard() {
               )}
 
               <form onSubmit={handleApply}>
+                <div className="form-group">
+                  <label htmlFor="facultySelect">Select Faculty Advisor (To Review This Request)</label>
+                  <select
+                    id="facultySelect"
+                    value={selectedFacultyId}
+                    onChange={(e) => setSelectedFacultyId(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Select Faculty Advisor --</option>
+                    {facultyList.map((fac) => (
+                      <option key={fac.id} value={fac.id}>
+                        {fac.name} ({fac.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="form-group">
                   <label htmlFor="eventName">Event / Activity Name</label>
                   <input

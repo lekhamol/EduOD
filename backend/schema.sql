@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS od_requests (
   student_name VARCHAR(100) NOT NULL,
   reg_no VARCHAR(50) NOT NULL,
   department VARCHAR(100) NOT NULL,
+  faculty_id INT DEFAULT NULL,
   event_name VARCHAR(255) NOT NULL,
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
@@ -29,7 +30,8 @@ CREATE TABLE IF NOT EXISTS od_requests (
   qr_code_data LONGTEXT DEFAULT NULL,
   ai_analysis JSON DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE
+  FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (faculty_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS attendance_records (

@@ -14,10 +14,24 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// GET Faculty list for a department (to allow student selection)
+router.get('/faculty-list', protect, async (req, res) => {
+  try {
+    const dept = req.query.department || req.user.department;
+    const faculty = await query(
+      'SELECT id, name, email, department FROM users WHERE role = "faculty" AND department = ? ORDER BY name ASC',
+      [dept]
+    );
+    res.json({ success: true, faculty });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Apply for OD (Student)
 router.post('/apply', protect, authorize('student'), upload.single('attachment'), async (req, res) => {
   try {
-    const { event_name, start_date, end_date, reason } = req.body;
+    const { event_name, start_date, end_date, reason, faculty_id } = req.body;
 
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Document attachment is mandatory.' });
@@ -29,13 +43,14 @@ router.post('/apply', protect, authorize('student'), upload.single('attachment')
     const aiAnalysis = await analyzeODRequest(req.user.id, start_date, reason, req.file.filename);
 
     const result = await query(
-      `INSERT INTO od_requests (student_id, student_name, reg_no, department, event_name, start_date, end_date, reason, attachment, ai_analysis)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO od_requests (student_id, student_name, reg_no, department, faculty_id, event_name, start_date, end_date, reason, attachment, ai_analysis)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.id,
         req.user.name,
         req.user.reg_no,
         req.user.department,
+        faculty_id || null,
         event_name,
         start_date,
         end_date,
@@ -57,7 +72,11 @@ router.post('/apply', protect, authorize('student'), upload.single('attachment')
 router.get('/my', protect, authorize('student'), async (req, res) => {
   try {
     const requests = await query(
-      'SELECT * FROM od_requests WHERE student_id = ? ORDER BY created_at DESC',
+      `SELECT o.*, f.name AS faculty_name 
+       FROM od_requests o 
+       LEFT JOIN users f ON o.faculty_id = f.id 
+       WHERE o.student_id = ? 
+       ORDER BY o.created_at DESC`,
       [req.user.id]
     );
     res.json({ success: true, requests });
@@ -72,17 +91,23 @@ router.get('/all', protect, authorize('faculty', 'hod'), async (req, res) => {
     const { status, department, search } = req.query;
 
     let sql = `
-      SELECT o.*, u.email, u.attendance
+      SELECT o.*, u.email, u.attendance, f.name AS faculty_name
       FROM od_requests o
       LEFT JOIN users u ON o.student_id = u.id
+      LEFT JOIN users f ON o.faculty_id = f.id
       WHERE 1=1
     `;
     const params = [];
 
-    if (department) {
+    // Restrict access: Faculty can ONLY view requests assigned to them
+    if (req.user.role === 'faculty') {
+      sql += ' AND (o.faculty_id = ? OR o.faculty_id IS NULL)';
+      params.push(req.user.id);
+    } else if (department) {
       sql += ' AND o.department = ?';
       params.push(department);
     }
+
     if (status) {
       sql += ' AND o.status = ?';
       params.push(status);
@@ -105,9 +130,10 @@ router.get('/all', protect, authorize('faculty', 'hod'), async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const rows = await query(
-      `SELECT o.*, u.email, u.attendance
+      `SELECT o.*, u.email, u.attendance, f.name AS faculty_name
        FROM od_requests o
        LEFT JOIN users u ON o.student_id = u.id
+       LEFT JOIN users f ON o.faculty_id = f.id
        WHERE o.id = ?`,
       [req.params.id]
     );
@@ -133,6 +159,11 @@ router.put('/:id/review', protect, authorize('faculty'), async (req, res) => {
       return res.status(404).json({ success: false, error: 'Request not found' });
     }
     const request = rows[0];
+
+    // Restrict review to assigned faculty only
+    if (request.faculty_id && request.faculty_id !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Access denied: This request is assigned to another faculty advisor.' });
+    }
 
     let comments = [];
     try { comments = JSON.parse(request.comments || '[]'); } catch { comments = []; }
