@@ -14,11 +14,12 @@ const generateToken = (id) => {
 
 router.post('/register', async (req, res) => {
   const { name, email, password, role, department, reg_no } = req.body;
+  const normalizedEmail = (email || '').trim().toLowerCase();
 
   try {
-    const userExists = await query('SELECT id FROM users WHERE email = ?', [email]);
+    const userExists = await query('SELECT id FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
     if (userExists && userExists.length > 0) {
-      return res.status(400).json({ success: false, error: 'User already exists' });
+      return res.status(400).json({ success: false, error: 'User with this email already exists.' });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -28,7 +29,7 @@ router.post('/register', async (req, res) => {
 
     const result = await query(
       'INSERT INTO users (name, email, password, role, department, reg_no, attendance) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [name, email, hashedPassword, role, department, role === 'student' ? reg_no : null, attendance]
+      [name.trim(), normalizedEmail, hashedPassword, role, department, role === 'student' ? reg_no : null, attendance]
     );
 
     const userId = result.insertId;
@@ -44,7 +45,6 @@ router.post('/register', async (req, res) => {
           const date = new Date(today);
           date.setDate(today.getDate() - i);
           
-          // Skip Sundays and Saturdays for weekends
           if (date.getDay() === 0 || date.getDay() === 6) continue;
           
           const status = Math.random() * 100 < attendance ? 'present' : 'absent';
@@ -68,8 +68,8 @@ router.post('/register', async (req, res) => {
       token: generateToken(userId),
       user: {
         id: userId,
-        name,
-        email,
+        name: name.trim(),
+        email: normalizedEmail,
         role,
         department,
         reg_no: role === 'student' ? reg_no : undefined,
@@ -83,9 +83,10 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
+  const normalizedEmail = (email || '').trim().toLowerCase();
 
   try {
-    const users = await query('SELECT * FROM users WHERE email = ?', [email]);
+    const users = await query('SELECT * FROM users WHERE LOWER(email) = ?', [normalizedEmail]);
     if (users && users.length > 0) {
       const user = users[0];
       const isMatch = await bcrypt.compare(password, user.password);
@@ -104,10 +105,10 @@ router.post('/login', async (req, res) => {
           }
         });
       } else {
-        res.status(401).json({ success: false, error: 'Invalid email or password' });
+        res.status(401).json({ success: false, error: 'Incorrect password. Please try again.' });
       }
     } else {
-      res.status(401).json({ success: false, error: 'Invalid email or password' });
+      res.status(401).json({ success: false, error: 'No account found with this email. Please register first.' });
     }
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
