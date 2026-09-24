@@ -45,7 +45,11 @@ export default function Register() {
       }
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.error || 'Registration failed. Try again.');
+      if (!err.response) {
+        setError('Server Connection Error: Backend is not running on port 5000. Please start the backend server.');
+      } else {
+        setError(err.response.data?.error || 'Registration failed. Try again.');
+      }
     } finally {
       setLoading(false);
     }

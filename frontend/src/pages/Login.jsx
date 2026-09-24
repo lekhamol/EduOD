@@ -32,7 +32,11 @@ export default function Login() {
       }
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.error || 'Login failed. Please check credentials.');
+      if (!err.response) {
+        setError('Server Connection Error: Backend is not running on port 5000. Please start the backend server.');
+      } else {
+        setError(err.response.data?.error || 'Login failed. Please check credentials.');
+      }
     } finally {
       setLoading(false);
     }
