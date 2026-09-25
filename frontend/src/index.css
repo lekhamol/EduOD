@@ -1108,3 +1108,367 @@ tr:hover td {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* ─────────────────────────────────────────────────────
+   Smart OD Letter Component Styles (.od- prefix)
+───────────────────────────────────────────────────── */
+.od-letter-doc {
+  background: white;
+  color: #1a1a2e;
+  padding: 2.5rem;
+  border-radius: 6px;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  border: 3px double #1a1a2e;
+  position: relative;
+  overflow: hidden;
+}
+
+.od-letter-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-35deg);
+  font-size: 5rem;
+  font-weight: 900;
+  color: rgba(99, 102, 241, 0.05);
+  pointer-events: none;
+  white-space: nowrap;
+  letter-spacing: 0.2em;
+  z-index: 0;
+  user-select: none;
+}
+
+.od-letter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #1a1a2e;
+  position: relative;
+  z-index: 1;
+}
+
+.od-inst-name {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #1a1a2e;
+  letter-spacing: 0.05em;
+}
+
+.od-inst-tagline {
+  font-size: 0.65rem;
+  color: #6b7280;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+
+.od-inst-dept {
+  font-size: 0.75rem;
+  color: #374151;
+  font-weight: 600;
+  margin-top: 6px;
+}
+
+.od-letter-meta {
+  text-align: right;
+  font-size: 0.7rem;
+  color: #6b7280;
+  line-height: 1.9;
+}
+
+.od-letter-meta strong {
+  color: #374151;
+}
+
+.od-letter-title-section {
+  text-align: center;
+  margin: 1.1rem 0;
+  position: relative;
+  z-index: 1;
+}
+
+.od-cert-ribbon {
+  display: inline-block;
+  background: #1a1a2e;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  padding: 5px 24px;
+  text-transform: uppercase;
+  border-radius: 2px;
+}
+
+.od-letter-salutation {
+  font-size: 0.875rem;
+  color: #374151;
+  margin: 1rem 0 0.75rem;
+  position: relative;
+  z-index: 1;
+}
+
+.od-letter-body {
+  font-size: 0.875rem;
+  line-height: 1.75;
+  color: #1a1a2e;
+  margin-bottom: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.od-details-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.82rem;
+  position: relative;
+  z-index: 1;
+}
+
+.od-details-table thead th {
+  background: #1a1a2e;
+  color: #fff;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.od-details-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+}
+
+.od-details-table tr:nth-child(even) td {
+  background: #f9fafb;
+}
+
+.od-details-table td:first-child {
+  font-weight: 600;
+  color: #1a1a2e;
+  width: 38%;
+}
+
+.od-approval-chain {
+  margin: 1rem 0;
+  padding: 0.875rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
+  position: relative;
+  z-index: 1;
+}
+
+.od-chain-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #374151;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px dashed #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.od-chain-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  margin-bottom: 0.625rem;
+}
+
+.od-chain-step:last-child {
+  margin-bottom: 0;
+}
+
+.od-chain-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.od-chain-dot--approved {
+  background: #10b981;
+  color: #fff;
+}
+
+.od-chain-info {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  flex: 1;
+}
+
+.od-chain-info strong {
+  display: block;
+  color: #111827;
+  font-size: 0.8rem;
+}
+
+.od-chain-info span {
+  color: #6b7280;
+  font-size: 0.7rem;
+}
+
+.od-chain-comment {
+  font-style: italic;
+  color: #4b5563;
+  font-size: 0.72rem;
+  margin-top: 3px;
+  padding-left: 0.5rem;
+  border-left: 2px solid #d1d5db;
+}
+
+.od-letter-closing {
+  font-size: 0.82rem;
+  color: #374151;
+  line-height: 1.7;
+  margin: 0.75rem 0;
+  position: relative;
+  z-index: 1;
+}
+
+.od-letter-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #e5e7eb;
+  position: relative;
+  z-index: 1;
+}
+
+.od-qr-area { text-align: center; }
+
+.od-qr-img {
+  width: 90px;
+  height: 90px;
+  border: 1px solid #d1d5db;
+  padding: 4px;
+  background: white;
+  display: block;
+}
+
+.od-qr-placeholder {
+  width: 90px;
+  height: 90px;
+  border: 1px dashed #d1d5db;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  color: #9ca3af;
+  text-align: center;
+}
+
+.od-qr-label {
+  font-size: 0.6rem;
+  color: #9ca3af;
+  margin-top: 4px;
+  letter-spacing: 0.05em;
+}
+
+/* Circular digital seal */
+.od-seal {
+  width: 95px;
+  height: 95px;
+  border-radius: 50%;
+  border: 3px double #6366f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.od-seal-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 4px;
+}
+
+.od-seal-main {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #6366f1;
+  text-transform: uppercase;
+}
+
+.od-seal-sub {
+  font-size: 0.5rem;
+  color: #9ca3af;
+  letter-spacing: 0.05em;
+}
+
+.od-seal-line {
+  width: 50px;
+  height: 1px;
+  background: #d1d5db;
+  margin: 4px 0;
+}
+
+.od-seal-status {
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #10b981;
+  text-transform: uppercase;
+}
+
+.od-signature-block { text-align: center; }
+.od-sig-space { height: 40px; }
+
+.od-sig-line {
+  width: 150px;
+  height: 1px;
+  background: #9ca3af;
+  margin: 0 auto 4px;
+}
+
+.od-sig-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.od-sig-title {
+  font-size: 0.68rem;
+  color: #6b7280;
+  margin-top: 1px;
+}
+
+.od-sig-dept {
+  font-size: 0.63rem;
+  color: #9ca3af;
+}
+
+.od-footer-note {
+  text-align: center;
+  font-size: 0.58rem;
+  color: #9ca3af;
+  margin-top: 1rem;
+  letter-spacing: 0.04em;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #e5e7eb;
+  word-break: break-all;
+  position: relative;
+  z-index: 1;
+}
+
+/* Spin animation for loader */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
