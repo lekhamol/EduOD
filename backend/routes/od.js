@@ -237,4 +237,72 @@ router.put('/:id/approve', protect, authorize('hod'), async (req, res) => {
   }
 });
 
+// Generate OD Letter Data (approved only)
+router.get('/:id/letter', async (req, res) => {
+  try {
+    const rows = await query(
+      `SELECT o.*, 
+              u.email AS student_email,
+              u.attendance,
+              f.name AS faculty_name,
+              f.email AS faculty_email,
+              h.name AS hod_name,
+              h.email AS hod_email
+       FROM od_requests o
+       LEFT JOIN users u ON o.student_id = u.id
+       LEFT JOIN users f ON o.faculty_id = f.id
+       LEFT JOIN users h ON h.role = 'hod' AND h.department = o.department
+       WHERE o.id = ?`,
+      [req.params.id]
+    );
+
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Request not found' });
+    }
+
+    const request = rows[0];
+
+    if (request.status !== 'Approved') {
+      return res.status(400).json({ success: false, error: 'OD Letter is only available for Approved requests.' });
+    }
+
+    // Parse comments
+    let comments = [];
+    try { comments = JSON.parse(request.comments || '[]'); } catch { comments = []; }
+
+    // Build reference number: OD/DEPT-CODE/YEAR/ID
+    const deptCode = (request.department || 'GEN')
+      .split(/[\s&]+/)
+      .map(w => w[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 4);
+    const year = new Date().getFullYear();
+    const refNo = `OD/${deptCode}/${year}/${String(request.id).padStart(4, '0')}`;
+
+    // Approval chain from comments
+    const facultyComment = comments.find(c => c.role === 'faculty');
+    const hodComment = comments.find(c => c.role === 'hod');
+
+    const letterData = {
+      ...request,
+      comments,
+      ref_no: refNo,
+      letter_date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
+      start_date_fmt: new Date(request.start_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
+      end_date_fmt: new Date(request.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
+      faculty_name: request.faculty_name || 'Class Faculty',
+      hod_name: request.hod_name || 'Head of Department',
+      faculty_comment: facultyComment?.text || null,
+      hod_comment: hodComment?.text || null,
+      verification_url: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-od/${request.id}`,
+    };
+
+    res.json({ success: true, letter: letterData });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;
+
