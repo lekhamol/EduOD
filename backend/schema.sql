@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS od_requests (
   reason TEXT NOT NULL,
   attachment VARCHAR(255) NOT NULL,
   status ENUM('Pending', 'Faculty_Approved', 'Approved', 'Rejected') DEFAULT 'Pending',
+  priority ENUM('HIGH', 'MEDIUM', 'NORMAL', 'EXPIRED') DEFAULT 'NORMAL',
   comments JSON DEFAULT NULL,
   qr_code_data LONGTEXT DEFAULT NULL,
   ai_analysis JSON DEFAULT NULL,
@@ -33,6 +34,8 @@ CREATE TABLE IF NOT EXISTS od_requests (
   FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (faculty_id) REFERENCES users(id) ON DELETE SET NULL
 );
+
+ALTER TABLE od_requests ADD COLUMN IF NOT EXISTS priority ENUM('HIGH', 'MEDIUM', 'NORMAL', 'EXPIRED') DEFAULT 'NORMAL';
 
 CREATE TABLE IF NOT EXISTS attendance_records (
   id INT AUTO_INCREMENT PRIMARY KEY,

@@ -5,6 +5,7 @@ import { protect, authorize } from '../middleware/auth.js';
 import { analyzeODRequest } from '../utils/aiHelper.js';
 import { generateQRCode } from '../utils/qrHelper.js';
 import { sendStatusEmail } from '../utils/emailHelper.js';
+import { calculatePriority, enrichWithPriority } from '../utils/priorityHelper.js';
 
 const router = express.Router();
 
