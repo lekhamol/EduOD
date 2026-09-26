@@ -213,11 +213,11 @@ router.put('/:id/approve', protect, authorize('hod'), async (req, res) => {
 
     let qrCodeData = request.qr_code_data || null;
     if (status === 'Approved') {
-      const verificationLink = `http://localhost:5173/verify-od/${request.id}`;
-      qrCodeData = await generateQRCode(
-        `Verified OD: ${request.student_name} (${request.reg_no}) - Event: ${request.event_name} - Date: ${new Date(request.start_date).toLocaleDateString()} - Verification: ${verificationLink}`
-      );
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const verificationLink = `${frontendUrl}/verify-od/${request.id}`;
+      qrCodeData = await generateQRCode(verificationLink);
     }
+
 
     await query(
       'UPDATE od_requests SET status = ?, comments = ?, qr_code_data = ? WHERE id = ?',
