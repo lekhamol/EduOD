@@ -1472,3 +1472,49 @@ tr:hover td {
   to { transform: rotate(360deg); }
 }
 
+/* ─────────────────────────────────────────────────────
+   Attendance Alert Centre Styles
+───────────────────────────────────────────────────── */
+
+@keyframes criticalPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.0); }
+  50%       { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.12); }
+}
+
+.alert-card-critical {
+  animation: criticalPulse 2.5s ease-in-out infinite;
+}
+
+.alert-summary-card {
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.alert-summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.alert-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 600px) {
+  .alert-details-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 400px) {
+  .alert-details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

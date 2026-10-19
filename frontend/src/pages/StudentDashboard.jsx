@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { LogOut, Calendar as CalendarIcon, FileText, Send, AlertCircle, Sparkles, Check, X, ShieldAlert, BarChart2 } from 'lucide-react';
+import { LogOut, Calendar as CalendarIcon, FileText, Send, AlertCircle, Sparkles, Check, X, ShieldAlert, BarChart2, Bell } from 'lucide-react';
 import Calendar from '../components/Calendar';
 import QRCard from '../components/QRCard';
 import ThemeSelector from '../components/ThemeSelector';
@@ -193,6 +193,33 @@ export default function StudentDashboard() {
             </div>
           </div>
         </div>
+
+        {/* ── Student Self-Attendance Alert Banner ── */}
+        {(() => {
+          const att = stats.personalAttendance;
+          if (att == null || att >= 85) return null;
+          const isCritical = att < 65;
+          const isWarning  = att >= 65 && att < 75;
+          const isWatch    = att >= 75 && att < 85;
+          const bg     = isCritical ? 'rgba(239,68,68,0.12)' : isWarning ? 'rgba(245,158,11,0.12)' : 'rgba(6,182,212,0.1)';
+          const border = isCritical ? 'rgba(239,68,68,0.35)'  : isWarning ? 'rgba(245,158,11,0.35)'  : 'rgba(6,182,212,0.3)';
+          const color  = isCritical ? '#ef4444'                : isWarning ? '#f59e0b'                 : '#06b6d4';
+          const label  = isCritical ? '⚠️ CRITICAL ATTENDANCE ALERT' : isWarning ? '🔶 ATTENDANCE WARNING' : '🔵 ATTENDANCE WATCH';
+          const msg    = isCritical
+            ? `Your attendance is critically low at ${att}%. You are at risk of being barred from examinations. Please attend all classes immediately and consult your faculty advisor.`
+            : isWarning
+            ? `Your attendance is ${att}% — below the required 75%. Please improve your attendance to avoid academic consequences.`
+            : `Your attendance is ${att}% — approaching the 75% minimum threshold. Attend classes regularly to stay on track.`;
+          return (
+            <div style={{ padding: '1rem 1.25rem', background: bg, border: `1px solid ${border}`, borderLeft: `4px solid ${color}`, borderRadius: 'var(--radius-sm)', marginBottom: '1.5rem', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+              <Bell size={20} color={color} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
+              <div>
+                <div style={{ fontWeight: 800, color, fontSize: '0.85rem', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</div>
+                <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', lineHeight: 1.5 }}>{msg}</div>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="dashboard-grid">
           <div>
