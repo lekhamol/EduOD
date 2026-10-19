@@ -340,4 +340,92 @@ router.post('/add-student', protect, authorize('faculty'), async (req, res) => {
   }
 });
 
+// ── Attendance Alert Endpoint ───────────────────────────────────────────────
+// GET /api/attendance/alerts — returns students with low attendance & generated alert messages
+// Faculty: their department only. HOD: all departments or filtered by ?department=
+router.get('/alerts', protect, authorize('faculty', 'hod'), async (req, res) => {
+  try {
+    let department = null;
+
+    if (req.user.role === 'faculty') {
+      department = req.user.department;
+    } else if (req.query.department) {
+      department = req.query.department;
+    }
+
+    // Thresholds
+    const CRITICAL_THRESHOLD = 65;   // < 65% → Critical
+    const WARNING_THRESHOLD  = 75;   // 65–74% → Warning
+    const WATCH_THRESHOLD    = 85;   // 75–84% → Watch (just a heads-up)
+
+    const watchLimit = parseInt(req.query.watchLimit) || 85;
+
+    let sql = `
+      SELECT id, name, reg_no, email, department, attendance
+      FROM users
+      WHERE role = 'student'
+        AND attendance IS NOT NULL
+        AND attendance < ?
+    `;
+    const params = [watchLimit];
+
+    if (department) {
+      sql += ' AND department = ?';
+      params.push(department);
+    }
+
+    sql += ' ORDER BY attendance ASC';
+
+    const students = await query(sql, params);
+
+    // Classify and generate alert message for each student
+    const alerts = students.map((s) => {
+      let severity, alertMessage, action;
+
+      if (s.attendance < CRITICAL_THRESHOLD) {
+        severity = 'CRITICAL';
+        alertMessage = `⚠️ CRITICAL: ${s.name} (${s.reg_no}) has only ${s.attendance}% attendance — below the minimum 65% threshold. Immediate intervention required. Student is at risk of being barred from exams.`;
+        action = 'Immediate intervention required. Contact student and parent/guardian.';
+      } else if (s.attendance < WARNING_THRESHOLD) {
+        severity = 'WARNING';
+        alertMessage = `🔶 WARNING: ${s.name} (${s.reg_no}) has ${s.attendance}% attendance — below the required 75%. The student must improve attendance to avoid academic consequences.`;
+        action = 'Issue a formal attendance warning notice and schedule a counselling session.';
+      } else {
+        severity = 'WATCH';
+        alertMessage = `🔵 WATCH: ${s.name} (${s.reg_no}) has ${s.attendance}% attendance — approaching the 75% threshold. Monitor closely.`;
+        action = 'Inform student and monitor weekly. No formal action required yet.';
+      }
+
+      const shortfall75 = s.attendance < 75 ? (75 - s.attendance) : 0;
+      const shortfall65 = s.attendance < 65 ? (65 - s.attendance) : 0;
+
+      return {
+        id: s.id,
+        name: s.name,
+        reg_no: s.reg_no,
+        email: s.email,
+        department: s.department,
+        attendance: s.attendance,
+        severity,
+        alertMessage,
+        action,
+        shortfall75: Math.round(shortfall75 * 10) / 10,
+        shortfall65: Math.round(shortfall65 * 10) / 10,
+      };
+    });
+
+    // Summary counts
+    const summary = {
+      critical: alerts.filter(a => a.severity === 'CRITICAL').length,
+      warning:  alerts.filter(a => a.severity === 'WARNING').length,
+      watch:    alerts.filter(a => a.severity === 'WATCH').length,
+      total:    alerts.length,
+    };
+
+    res.json({ success: true, alerts, summary });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

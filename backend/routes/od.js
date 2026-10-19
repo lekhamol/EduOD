@@ -43,9 +43,12 @@ router.post('/apply', protect, authorize('student'), upload.single('attachment')
     // Run AI analysis helper
     const aiAnalysis = await analyzeODRequest(req.user.id, start_date, reason, req.file.filename);
 
+    // Auto-calculate priority based on event start date (students cannot choose)
+    const { priority, daysRemaining } = calculatePriority(start_date);
+
     const result = await query(
-      `INSERT INTO od_requests (student_id, student_name, reg_no, department, faculty_id, event_name, start_date, end_date, reason, attachment, ai_analysis)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO od_requests (student_id, student_name, reg_no, department, faculty_id, event_name, start_date, end_date, reason, attachment, ai_analysis, priority)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.id,
         req.user.name,
@@ -57,17 +60,19 @@ router.post('/apply', protect, authorize('student'), upload.single('attachment')
         end_date,
         reason,
         attachmentPath,
-        JSON.stringify(aiAnalysis)
+        JSON.stringify(aiAnalysis),
+        priority
       ]
     );
 
     const [odRequest] = await query('SELECT * FROM od_requests WHERE id = ?', [result.insertId]);
 
-    res.status(201).json({ success: true, odRequest });
+    res.status(201).json({ success: true, odRequest: { ...odRequest, priority, daysRemaining } });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
 
 // View student's own ODs
 router.get('/my', protect, authorize('student'), async (req, res) => {
