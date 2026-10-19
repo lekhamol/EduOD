@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { LogOut, Calendar as CalendarIcon, FileText, AlertCircle, Check, X, ShieldAlert, Sparkles, MessageCircle, Users, CheckSquare, Upload, Brain, TriangleAlert, CircleCheck, BarChart2 } from 'lucide-react';
+import { LogOut, Calendar as CalendarIcon, FileText, AlertCircle, Check, X, ShieldAlert, Sparkles, MessageCircle, Users, CheckSquare, Upload, Brain, TriangleAlert, CircleCheck, BarChart2, Bell } from 'lucide-react';
 import ThemeSelector from '../components/ThemeSelector';
 import AttendanceHeatmap from '../components/AttendanceHeatmap';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
+import AttendanceAlerts from '../components/AttendanceAlerts';
 
 export default function FacultyDashboard() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
@@ -39,8 +40,12 @@ export default function FacultyDashboard() {
   const [aiError, setAiError] = useState('');
   const aiFileInputRef = useRef(null);
 
+  // Attendance Alerts
+  const [alertSummary, setAlertSummary] = useState({ critical: 0, warning: 0, watch: 0, total: 0 });
+
   useEffect(() => {
     fetchDashboardData();
+    fetchAlertSummary();
   }, []);
 
   useEffect(() => {
@@ -48,6 +53,16 @@ export default function FacultyDashboard() {
       fetchStudents();
     }
   }, [activeTab]);
+
+  const fetchAlertSummary = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get('http://localhost:5000/api/attendance/alerts?watchLimit=85', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.data.success) setAlertSummary(res.data.summary);
+    } catch {}
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -287,6 +302,22 @@ export default function FacultyDashboard() {
             onClick={() => setActiveTab('analytics')}
           >
             <BarChart2 size={16} /> Department Analytics
+          </button>
+          <button 
+            className={`btn ${activeTab === 'alerts' ? 'btn-primary' : 'btn-secondary'}`}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', position: 'relative' }}
+            onClick={() => setActiveTab('alerts')}
+          >
+            <Bell size={16} /> Attendance Alerts
+            {alertSummary.critical > 0 && (
+              <span style={{
+                position: 'absolute', top: '-6px', right: '-6px',
+                background: '#ef4444', color: 'white',
+                borderRadius: '9999px', fontSize: '0.65rem',
+                fontWeight: 800, padding: '0.1rem 0.4rem',
+                minWidth: '18px', textAlign: 'center', lineHeight: '16px'
+              }}>{alertSummary.critical}</span>
+            )}
           </button>
         </div>
 
@@ -817,8 +848,31 @@ export default function FacultyDashboard() {
               </button>
             </form>
           </div>
-        ) : (
+        ) : activeTab === 'analytics' ? (
           <AnalyticsDashboard />
+        ) : (
+          /* Attendance Alerts Tab Panel */
+          <div className="section-card glass-card animate-slide-up" style={{ padding: '2rem' }}>
+            {alertSummary.critical > 0 && (
+              <div style={{
+                padding: '0.85rem 1.25rem',
+                background: 'rgba(239,68,68,0.12)',
+                border: '1px solid rgba(239,68,68,0.35)',
+                borderRadius: 'var(--radius-sm)',
+                color: '#ef4444',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                marginBottom: '1.5rem',
+              }}>
+                <Bell size={18} />
+                ⚠️ {alertSummary.critical} student{alertSummary.critical > 1 ? 's' : ''} in your department have CRITICAL attendance below 65%! Immediate action required.
+              </div>
+            )}
+            <AttendanceAlerts role={user.role} department={user.department} />
+          </div>
         )}
       </div>
     </div>
