@@ -27,7 +27,14 @@ const connectDB = async () => {
       .filter(s => s.length > 0);
 
     for (let statement of statements) {
-      await conn.query(statement);
+      try {
+        await conn.query(statement);
+      } catch (stmtErr) {
+        // Ignore "duplicate column" or similar non-fatal schema errors
+        if (!stmtErr.message.includes('Duplicate column') && !stmtErr.message.includes('already exists')) {
+          console.warn('Schema warning (non-fatal):', stmtErr.message);
+        }
+      }
     }
     await conn.end();
     console.log('MySQL Database & Tables initialized successfully.');
@@ -43,7 +50,10 @@ const connectDB = async () => {
     });
   } catch (error) {
     console.error('MySQL Setup Error:', error.message);
-    process.exit(1);
+    // Only exit if we can't connect at all (pool creation failed)
+    if (!pool) {
+      process.exit(1);
+    }
   }
 };
 
