@@ -29,28 +29,30 @@ export default function StudentDashboard() {
   }, []);
 
   const fetchDashboardData = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
+    const token = localStorage.getItem('token');
+    const headers = { Authorization: `Bearer ${token}` };
 
+    // Run all calls independently so one failure doesn't block the rest
+    try {
       const resReq = await axios.get('http://localhost:5000/api/od/my', { headers });
       setRequests((resReq.data.requests || []).map(r => ({
         ...r,
         comments: typeof r.comments === 'string' ? JSON.parse(r.comments || '[]') : (r.comments || []),
         ai_analysis: typeof r.ai_analysis === 'string' ? JSON.parse(r.ai_analysis || 'null') : r.ai_analysis
       })));
+    } catch (e) { console.error('OD requests fetch failed:', e.message); }
 
+    try {
       const resStats = await axios.get('http://localhost:5000/api/stats', { headers });
-      setStats(resStats.data.stats);
+      if (resStats.data.stats) setStats(resStats.data.stats);
+    } catch (e) { console.error('Stats fetch failed:', e.message); }
 
+    try {
       const resFac = await axios.get('http://localhost:5000/api/od/faculty-list', { headers });
-      setFacultyList(resFac.data.faculty || []);
-      if (resFac.data.faculty && resFac.data.faculty.length > 0) {
-        setSelectedFacultyId(resFac.data.faculty[0].id);
-      }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-    }
+      const faculty = resFac.data.faculty || [];
+      setFacultyList(faculty);
+      if (faculty.length > 0) setSelectedFacultyId(faculty[0].id);
+    } catch (e) { console.error('Faculty list fetch failed:', e.message); }
   };
 
   const handleLogout = () => {

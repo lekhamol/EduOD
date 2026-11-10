@@ -119,4 +119,26 @@ router.get('/me', protect, async (req, res) => {
   res.json({ success: true, user: req.user });
 });
 
+// Change own password (must be logged in)
+router.put('/change-password', protect, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ success: false, error: 'Current and new password are required.' });
+  }
+  try {
+    const users = await query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    const user = users[0];
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, error: 'Current password is incorrect.' });
+    }
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash(newPassword, salt);
+    await query('UPDATE users SET password = ? WHERE id = ?', [hashed, req.user.id]);
+    res.json({ success: true, message: 'Password changed successfully.' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;
